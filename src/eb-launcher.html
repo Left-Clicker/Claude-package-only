@@ -15,6 +15,8 @@
       button:disabled { background: #9bbcff; cursor: not-allowed; }
       #stopBtn { background: #d9534f; margin-left: 8px; }
       #stopBtn:disabled { background: #e7a7a5; }
+      #continueBtn { background: #3aa655; margin-left: 8px; }
+      #continueBtn:disabled { background: #9fd6ab; }
       #status { margin-left: 10px; font-size: 12px; color: #444; }
       #logs {
         margin-top: 12px; height: 220px; overflow: auto; background: #111; color: #d6ffd6;
@@ -48,11 +50,20 @@
       </select>
     </div>
     <div class="row">
+      <label for="browserChannel">浏览器选择</label>
+      <select id="browserChannel">
+        <option value="auto">自动（优先 Edge）</option>
+        <option value="edge">仅 Edge 优先</option>
+        <option value="chrome">仅 Chrome 优先</option>
+      </select>
+    </div>
+    <div class="row">
       <label><input id="remember" type="checkbox" /> 保存本地，下次自动读取</label>
     </div>
     <div class="row">
       <button id="startBtn">开始执行日报脚本</button>
       <button id="stopBtn">停止脚本</button>
+      <button id="continueBtn" disabled>继续执行</button>
       <span id="status">未开始</span>
     </div>
     <div id="logs"></div>

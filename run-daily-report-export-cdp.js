@@ -58,7 +58,14 @@ function resolveBundledChromiumExecutable() {
   return "";
 }
 
-async function launchBrowserWithFallback(runHeadless, bundledExe, logger) {
+function buildChannelOrder(browserChannel) {
+  const normalized = String(browserChannel || "auto").toLowerCase();
+  if (normalized === "edge") return ["msedge", "chrome"];
+  if (normalized === "chrome") return ["chrome", "msedge"];
+  return ["msedge", "chrome"];
+}
+
+async function launchBrowserWithFallback(runHeadless, bundledExe, browserChannel, logger) {
   const baseOptions = {
     headless: runHeadless,
     slowMo: runHeadless ? 0 : 70,
@@ -73,7 +80,7 @@ async function launchBrowserWithFallback(runHeadless, bundledExe, logger) {
     }
   }
 
-  for (const channel of ["msedge", "chrome"]) {
+  for (const channel of buildChannelOrder(browserChannel)) {
     try {
       logger(`尝试启动系统浏览器 channel=${channel}`);
       return await chromium.launch({ ...baseOptions, channel });
@@ -253,18 +260,32 @@ async function loginIfNeeded(page, options) {
   await sleep(2800, signal);
 }
 
+async function isPageReady(page) {
+  return (
+    (await page.getByRole("button", { name: "快捷填充" }).count()) > 0 &&
+    (await page.getByRole("button", { name: "搜索" }).count()) > 0
+  );
+}
+
 async function waitPageReady(page, options) {
-  const { signal } = options;
-  for (let i = 0; i < 15; i += 1) {
-    ensureNotAborted(signal);
-    const ready =
-      (await page.getByRole("button", { name: "快捷填充" }).count()) > 0 &&
-      (await page.getByRole("button", { name: "搜索" }).count()) > 0;
-    if (ready) return;
-    await loginIfNeeded(page, options);
-    await sleep(1000, signal);
+  const { signal, logger, waitForManualContinue } = options;
+  while (true) {
+    for (let i = 0; i < 15; i += 1) {
+      ensureNotAborted(signal);
+      if (await isPageReady(page)) return;
+      await loginIfNeeded(page, options);
+      await sleep(1000, signal);
+    }
+
+    if (!waitForManualContinue) {
+      throw new Error("运营报表页面未就绪。");
+    }
+
+    const hint =
+      "未检测到“快捷填充/搜索”按钮。请手动把浏览器切到运营报表页面并确认可操作，然后在启动器点击“继续执行”。";
+    logger(hint);
+    await waitForManualContinue(hint, signal);
   }
-  throw new Error("运营报表页面未就绪。");
 }
 
 async function applyTemplate(page, signal) {
@@ -397,8 +418,10 @@ async function runDailyReportExport(options = {}) {
     dateInput = process.env.EB_DATE_INPUT || "",
     waitSeconds = Number(process.env.EB_WAIT_SECONDS || "35"),
     runMode = process.env.EB_RUN_MODE || "visible",
+    browserChannel = process.env.EB_BROWSER_CHANNEL || "auto",
     signal,
     logger = (msg) => console.log(msg),
+    waitForManualContinue,
   } = options;
 
   if (!loginUser || !loginPass) {
@@ -422,13 +445,13 @@ async function runDailyReportExport(options = {}) {
   logger(`搜索等待: ${Math.floor(searchWaitMs / 1000)} 秒，浏览器模式: ${runHeadless ? "后台" : "可见"}`);
   const bundledExe = resolveBundledChromiumExecutable();
   if (bundledExe) logger(`使用内置浏览器: ${bundledExe}`);
-  const browser = await launchBrowserWithFallback(runHeadless, bundledExe, logger);
+  const browser = await launchBrowserWithFallback(runHeadless, bundledExe, browserChannel, logger);
   try {
     const context = await browser.newContext({ acceptDownloads: true });
     const page = await context.newPage();
 
     await page.goto(targetUrl, { waitUntil: "domcontentloaded", timeout: 30000 });
-    await waitPageReady(page, { loginUser, loginPass, signal });
+    await waitPageReady(page, { loginUser, loginPass, signal, logger, waitForManualContinue });
 
     for (const d of dates) {
       ensureNotAborted(signal);

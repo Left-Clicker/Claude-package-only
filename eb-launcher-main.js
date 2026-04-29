@@ -8,6 +8,7 @@ let runningTask = null;
 
 function stopRunningProcess() {
   if (!runningTask) return false;
+  runningTask.continueResolver = null;
   runningTask.abortController.abort();
   return true;
 }
@@ -59,7 +60,7 @@ function createWindow() {
 ipcMain.handle("eb:read-creds", async () => readCreds());
 
 ipcMain.handle("eb:start-script", async (_evt, payload) => {
-  const { username, password, remember, dateInput, waitSeconds, runMode } = payload || {};
+  const { username, password, remember, dateInput, waitSeconds, runMode, browserChannel } = payload || {};
   if (!username || !password) {
     return { ok: false, message: "账号和密码不能为空。" };
   }
@@ -71,6 +72,7 @@ ipcMain.handle("eb:start-script", async (_evt, payload) => {
     return { ok: false, message: "等待秒数必须是大于 0 的数字。" };
   }
   const normalizedMode = runMode === "headless" ? "headless" : "visible";
+  const normalizedChannel = browserChannel === "edge" || browserChannel === "chrome" ? browserChannel : "auto";
   if (runningTask) {
     return { ok: false, message: "脚本正在运行中，请稍后再试。" };
   }
@@ -82,15 +84,28 @@ ipcMain.handle("eb:start-script", async (_evt, payload) => {
     BrowserWindow.getAllWindows().forEach((w) => w.webContents.send("eb:log", `${text}\n`));
   };
   const abortController = new AbortController();
-  runningTask = { abortController };
+  runningTask = { abortController, continueResolver: null };
   runDailyReportExport({
     loginUser: username,
     loginPass: password,
     dateInput: String(dateInput).trim(),
     waitSeconds: waitNum,
     runMode: normalizedMode,
+    browserChannel: normalizedChannel,
     signal: abortController.signal,
     logger: sendLog,
+    waitForManualContinue: (message, signal) =>
+      new Promise((resolve, reject) => {
+        if (!runningTask) return reject(new Error("任务已结束"));
+        if (signal?.aborted) return reject(new AbortError());
+        runningTask.continueResolver = resolve;
+        BrowserWindow.getAllWindows().forEach((w) => w.webContents.send("eb:paused", { message }));
+        const onAbort = () => {
+          runningTask && (runningTask.continueResolver = null);
+          reject(new AbortError());
+        };
+        signal?.addEventListener("abort", onAbort, { once: true });
+      }),
   })
     .then(() => {
       BrowserWindow.getAllWindows().forEach((w) => w.webContents.send("eb:done", { code: 0, message: "脚本执行完成。" }));
@@ -120,6 +135,16 @@ ipcMain.handle("eb:stop-script", async () => {
   }
   stopRunningProcess();
   return { ok: true, message: "已发送停止信号。" };
+});
+
+ipcMain.handle("eb:continue-script", async () => {
+  if (!runningTask || !runningTask.continueResolver) {
+    return { ok: false, message: "当前没有等待继续的任务。" };
+  }
+  const resume = runningTask.continueResolver;
+  runningTask.continueResolver = null;
+  resume();
+  return { ok: true, message: "已继续执行。" };
 });
 
 app.whenReady().then(() => {
