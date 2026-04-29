@@ -58,6 +58,33 @@ function resolveBundledChromiumExecutable() {
   return "";
 }
 
+async function launchBrowserWithFallback(runHeadless, bundledExe, logger) {
+  const baseOptions = {
+    headless: runHeadless,
+    slowMo: runHeadless ? 0 : 70,
+  };
+
+  if (bundledExe) {
+    try {
+      logger(`尝试启动内置浏览器: ${bundledExe}`);
+      return await chromium.launch({ ...baseOptions, executablePath: bundledExe });
+    } catch (e) {
+      logger(`内置浏览器启动失败，将回退系统浏览器: ${e instanceof Error ? e.message : e}`);
+    }
+  }
+
+  for (const channel of ["msedge", "chrome"]) {
+    try {
+      logger(`尝试启动系统浏览器 channel=${channel}`);
+      return await chromium.launch({ ...baseOptions, channel });
+    } catch (e) {
+      logger(`系统浏览器 ${channel} 启动失败: ${e instanceof Error ? e.message : e}`);
+    }
+  }
+
+  throw new Error("未找到可用浏览器。请安装 Edge/Chrome，或使用包含内置 Chromium 的新版包。");
+}
+
 class AbortError extends Error {
   constructor() {
     super("任务已取消");
@@ -395,11 +422,7 @@ async function runDailyReportExport(options = {}) {
   logger(`搜索等待: ${Math.floor(searchWaitMs / 1000)} 秒，浏览器模式: ${runHeadless ? "后台" : "可见"}`);
   const bundledExe = resolveBundledChromiumExecutable();
   if (bundledExe) logger(`使用内置浏览器: ${bundledExe}`);
-  const browser = await chromium.launch({
-    headless: runHeadless,
-    slowMo: runHeadless ? 0 : 70,
-    executablePath: bundledExe || undefined,
-  });
+  const browser = await launchBrowserWithFallback(runHeadless, bundledExe, logger);
   try {
     const context = await browser.newContext({ acceptDownloads: true });
     const page = await context.newPage();
