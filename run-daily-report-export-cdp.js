@@ -2,6 +2,7 @@ const path = require("path");
 const fs = require("fs");
 const { chromium } = require("playwright");
 const XLSX = require("xlsx");
+const XlsxPopulate = require("xlsx-populate");
 
 function configurePlaywrightBrowserPath() {
   if (process.env.PLAYWRIGHT_BROWSERS_PATH) return;
@@ -207,7 +208,7 @@ function ensureDateOutputDir(dateLabel) {
   return dir;
 }
 
-function importToWorkbook(sourceFile, targetWorkbook, targetSheet) {
+async function importToWorkbook(sourceFile, targetWorkbook, targetSheet) {
   const srcWb = XLSX.readFile(sourceFile, { raw: true });
   const srcFirstSheet = srcWb.SheetNames[0];
   if (!srcFirstSheet) throw new Error(`源文件无可用 sheet: ${sourceFile}`);
@@ -217,17 +218,22 @@ function importToWorkbook(sourceFile, targetWorkbook, targetSheet) {
     defval: null,
   });
 
-  const tgtWb = XLSX.readFile(targetWorkbook, {
-    cellFormula: true,
-    cellStyles: true,
-    cellNF: true,
-    cellDates: true,
-  });
-  if (!tgtWb.SheetNames.includes(targetSheet)) {
-    throw new Error(`目标 sheet 不存在: ${targetSheet}`);
+  const workbook = await XlsxPopulate.fromFileAsync(targetWorkbook);
+  const sheet = workbook.sheet(targetSheet);
+  if (!sheet) throw new Error(`目标 sheet 不存在: ${targetSheet}`);
+
+  // 仅清空目标 sheet 的值，不改样式/条件格式定义。
+  const used = sheet.usedRange();
+  if (used) used.value(null);
+
+  for (let r = 0; r < srcRows.length; r += 1) {
+    const row = srcRows[r] || [];
+    for (let c = 0; c < row.length; c += 1) {
+      sheet.cell(r + 1, c + 1).value(row[c]);
+    }
   }
-  tgtWb.Sheets[targetSheet] = XLSX.utils.aoa_to_sheet(srcRows);
-  XLSX.writeFile(tgtWb, targetWorkbook);
+
+  await workbook.toFileAsync(targetWorkbook);
 }
 
 async function clickIfVisible(locator, signal) {
