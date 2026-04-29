@@ -31,10 +31,13 @@ jobs:
         run: npm run dist:win
         env:
           PLAYWRIGHT_BROWSERS_PATH: 0
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+          WIN_CSC_LINK: ""
+          WIN_CSC_KEY_PASSWORD: ""
 
       - name: Upload installer artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: windows-installer
           path: |
