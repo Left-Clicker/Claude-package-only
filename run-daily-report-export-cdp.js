@@ -22,6 +22,36 @@ function configurePlaywrightBrowserPath() {
   }
 }
 
+function resolveBundledChromiumExecutable() {
+  const roots = [
+    process.env.PLAYWRIGHT_BROWSERS_PATH || "",
+    process.resourcesPath
+      ? path.join(process.resourcesPath, "app.asar.unpacked", "node_modules", "playwright-core", ".local-browsers")
+      : "",
+    path.join(__dirname, "node_modules", "playwright-core", ".local-browsers"),
+    path.join(process.cwd(), "node_modules", "playwright-core", ".local-browsers"),
+  ].filter(Boolean);
+
+  for (const root of roots) {
+    if (!fs.existsSync(root)) continue;
+    const entries = fs.readdirSync(root, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isDirectory() || !entry.name.startsWith("chromium-")) continue;
+      const base = path.join(root, entry.name);
+      const candidates = [
+        path.join(base, "chrome-win", "chrome.exe"),
+        path.join(base, "chrome-win64", "chrome.exe"),
+        path.join(base, "chrome-linux", "chrome"),
+        path.join(base, "chrome-mac", "Chromium.app", "Contents", "MacOS", "Chromium"),
+      ];
+      for (const exe of candidates) {
+        if (fs.existsSync(exe)) return exe;
+      }
+    }
+  }
+  return "";
+}
+
 class AbortError extends Error {
   constructor() {
     super("任务已取消");
@@ -357,7 +387,13 @@ async function runDailyReportExport(options = {}) {
 
   logger(`本次执行日期: ${dates.map((d) => monthDayLabel(d)).join(", ")}`);
   logger(`搜索等待: ${Math.floor(searchWaitMs / 1000)} 秒，浏览器模式: ${runHeadless ? "后台" : "可见"}`);
-  const browser = await chromium.launch({ headless: runHeadless, slowMo: runHeadless ? 0 : 70 });
+  const bundledExe = resolveBundledChromiumExecutable();
+  if (bundledExe) logger(`使用内置浏览器: ${bundledExe}`);
+  const browser = await chromium.launch({
+    headless: runHeadless,
+    slowMo: runHeadless ? 0 : 70,
+    executablePath: bundledExe || undefined,
+  });
   try {
     const context = await browser.newContext({ acceptDownloads: true });
     const page = await context.newPage();
