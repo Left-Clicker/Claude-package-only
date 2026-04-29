@@ -11,7 +11,7 @@
     "ops:basic:cdp": "node run-ops-basic-export-cdp.js",
     "retention:cdp": "node run-retention-export-cdp.js",
     "daily:cdp": "node run-daily-report-export-cdp.js",
-    "dist:win": "electron-builder --win nsis",
+    "dist:win": "electron-builder --win portable",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -47,7 +47,7 @@
     "win": {
       "target": [
         {
-          "target": "nsis",
+          "target": "portable",
           "arch": [
             "x64"
           ]

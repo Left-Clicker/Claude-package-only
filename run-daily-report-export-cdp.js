@@ -3,6 +3,25 @@ const fs = require("fs");
 const { chromium } = require("playwright");
 const XLSX = require("xlsx");
 
+function configurePlaywrightBrowserPath() {
+  if (process.env.PLAYWRIGHT_BROWSERS_PATH) return;
+
+  const candidates = [
+    process.resourcesPath
+      ? path.join(process.resourcesPath, "app.asar.unpacked", "node_modules", "playwright-core", ".local-browsers")
+      : "",
+    path.join(__dirname, "node_modules", "playwright-core", ".local-browsers"),
+    path.join(process.cwd(), "node_modules", "playwright-core", ".local-browsers"),
+  ].filter(Boolean);
+
+  for (const p of candidates) {
+    if (fs.existsSync(p)) {
+      process.env.PLAYWRIGHT_BROWSERS_PATH = p;
+      break;
+    }
+  }
+}
+
 class AbortError extends Error {
   constructor() {
     super("任务已取消");
@@ -308,6 +327,7 @@ async function selectUS(page, signal) {
 }
 
 async function runDailyReportExport(options = {}) {
+  configurePlaywrightBrowserPath();
   const {
     loginUser = process.env.EB_LOGIN_USER || "",
     loginPass = process.env.EB_LOGIN_PASS || "",
