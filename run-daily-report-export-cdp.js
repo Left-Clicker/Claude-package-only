@@ -15,6 +15,8 @@ function configurePlaywrightBrowserPath() {
   ].filter(Boolean);
 
   for (const p of candidates) {
+    const normalized = p.replace(/\\/g, "/");
+    if (normalized.includes("app.asar/") && !normalized.includes("app.asar.unpacked/")) continue;
     if (fs.existsSync(p)) {
       process.env.PLAYWRIGHT_BROWSERS_PATH = p;
       break;
@@ -33,6 +35,8 @@ function resolveBundledChromiumExecutable() {
   ].filter(Boolean);
 
   for (const root of roots) {
+    const rootNormalized = root.replace(/\\/g, "/");
+    if (rootNormalized.includes("app.asar/") && !rootNormalized.includes("app.asar.unpacked/")) continue;
     if (!fs.existsSync(root)) continue;
     const entries = fs.readdirSync(root, { withFileTypes: true });
     for (const entry of entries) {
@@ -45,6 +49,8 @@ function resolveBundledChromiumExecutable() {
         path.join(base, "chrome-mac", "Chromium.app", "Contents", "MacOS", "Chromium"),
       ];
       for (const exe of candidates) {
+        const exeNormalized = exe.replace(/\\/g, "/");
+        if (exeNormalized.includes("app.asar/") && !exeNormalized.includes("app.asar.unpacked/")) continue;
         if (fs.existsSync(exe)) return exe;
       }
     }
