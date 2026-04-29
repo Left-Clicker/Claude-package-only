@@ -1,0 +1,63 @@
+{
+  "name": "claude",
+  "version": "1.0.0",
+  "description": "",
+  "main": "eb-launcher-main.js",
+  "scripts": {
+    "start": "node run-login.js",
+    "eb:ui": "electron eb-launcher-main.js",
+    "login": "node run-login.js",
+    "ops:basic": "node run-ops-basic-export.js",
+    "ops:basic:cdp": "node run-ops-basic-export-cdp.js",
+    "retention:cdp": "node run-retention-export-cdp.js",
+    "daily:cdp": "node run-daily-report-export-cdp.js",
+    "dist:win": "electron-builder --win nsis",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "playwright": "^1.59.1",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "electron": "^41.3.0",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "com.eb.daily.exporter",
+    "productName": "EB Daily Exporter",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "eb-launcher-main.js",
+      "eb-launcher-preload.js",
+      "run-daily-report-export-cdp.js",
+      "src/**/*",
+      "英文黑道每日数据模板.xlsx",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "node_modules/playwright-core/.local-browsers/**/*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    }
+  }
+}

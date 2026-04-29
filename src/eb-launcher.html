@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>EB 自动化启动器</title>
+    <style>
+      body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 16px; }
+      .row { margin-bottom: 10px; }
+      label { display: block; margin-bottom: 4px; font-size: 13px; color: #333; }
+      input[type="text"], input[type="password"], select {
+        width: 100%; box-sizing: border-box; padding: 8px; border: 1px solid #ccc; border-radius: 6px;
+      }
+      button { padding: 8px 14px; border: 0; border-radius: 6px; background: #1677ff; color: #fff; cursor: pointer; }
+      button:disabled { background: #9bbcff; cursor: not-allowed; }
+      #stopBtn { background: #d9534f; margin-left: 8px; }
+      #stopBtn:disabled { background: #e7a7a5; }
+      #status { margin-left: 10px; font-size: 12px; color: #444; }
+      #logs {
+        margin-top: 12px; height: 220px; overflow: auto; background: #111; color: #d6ffd6;
+        border-radius: 6px; padding: 10px; white-space: pre-wrap; font-family: ui-monospace, Menlo, monospace; font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <h3>EB 自动化启动器</h3>
+    <div class="row">
+      <label for="username">账号</label>
+      <input id="username" type="text" autocomplete="username" />
+    </div>
+    <div class="row">
+      <label for="password">密码</label>
+      <input id="password" type="password" autocomplete="current-password" />
+    </div>
+    <div class="row">
+      <label for="dateInput">日期（支持 4.28 / 4.28,4.30 / 4.28-4.30）</label>
+      <input id="dateInput" type="text" placeholder="例如：4.28 或 4.28,4.30 或 4.28-4.30" />
+    </div>
+    <div class="row">
+      <label for="waitSeconds">搜索后等待秒数</label>
+      <input id="waitSeconds" type="text" placeholder="默认 35" />
+    </div>
+    <div class="row">
+      <label for="runMode">浏览器模式</label>
+      <select id="runMode">
+        <option value="visible">显示浏览器（可见）</option>
+        <option value="headless">后台运行（不可见）</option>
+      </select>
+    </div>
+    <div class="row">
+      <label><input id="remember" type="checkbox" /> 保存本地，下次自动读取</label>
+    </div>
+    <div class="row">
+      <button id="startBtn">开始执行日报脚本</button>
+      <button id="stopBtn">停止脚本</button>
+      <span id="status">未开始</span>
+    </div>
+    <div id="logs"></div>
+    <script src="./eb-launcher-renderer.js"></script>
+  </body>
+  </html>
