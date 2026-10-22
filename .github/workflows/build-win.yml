@@ -43,5 +43,6 @@ jobs:
         uses: actions/upload-artifact@v5
         with:
           name: windows-installer
+          retention-days: 3
           path: |
             dist/**
